@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>Únete a Somar Express · Riders</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:linear-gradient(135deg,#FF8C00 0%,#ff6b1a 50%,#e85a00 100%);
+    min-height:100vh; padding:20px 12px;
+    color:#1a1a1a;
+  }
+  .container {
+    background:#fff; border-radius:20px; padding:28px 24px;
+    max-width:640px; width:100%; margin:0 auto;
+    box-shadow:0 20px 60px rgba(0,0,0,.3);
+  }
+  .header { text-align:center; margin-bottom:22px; }
+  .header .logo { font-size:42px; margin-bottom:4px; }
+  .header h1 { color:#FF8C00; font-size:26px; font-weight:800; margin-bottom:4px; }
+  .header .tag { color:#555; font-size:12px; font-weight:600; }
+  .steps-bar { display:flex; justify-content:space-between; align-items:center; padding:14px 0 20px; gap:6px; }
+  .step-dot { flex:1; height:6px; border-radius:3px; background:#e0e0e0; transition:background .25s; }
+  .step-dot.active, .step-dot.done { background:#FF8C00; }
+  .step-label { text-align:center; font-size:11px; color:#888; font-weight:700; margin-bottom:18px; text-transform:uppercase; letter-spacing:1px; }
+  .step { display:none; }
+  .step.active { display:block; animation:fade .25s; }
+  @keyframes fade { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:12px; font-weight:700; color:#333; margin-bottom:6px; text-transform:uppercase; letter-spacing:.3px; }
+  .field label .req { color:#e11d48; }
+  .field input[type=text], .field input[type=email], .field input[type=tel], .field input[type=password], .field input[type=number], .field select, .field textarea {
+    width:100%; padding:12px 14px; border:2px solid #e5e5e5; border-radius:10px; font-size:15px; font-family:inherit; background:#fafafa; transition:all .2s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline:none; border-color:#FF8C00; background:#fff; }
+  .field .hint { font-size:11px; color:#888; margin-top:4px; }
+  .radio-group, .check-group { display:flex; flex-wrap:wrap; gap:8px; }
+  .radio-group label, .check-group label {
+    flex:1; min-width:100px; display:flex; align-items:center; gap:6px;
+    padding:10px 12px; border:2px solid #e5e5e5; border-radius:10px; font-size:13px; font-weight:600;
+    cursor:pointer; background:#fafafa; text-transform:none; letter-spacing:0; margin-bottom:0;
+  }
+  .radio-group label:has(input:checked), .check-group label:has(input:checked) { border-color:#FF8C00; background:#fff7ee; color:#FF8C00; }
+  .radio-group input, .check-group input { accent-color:#FF8C00; }
+  .upload-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:480px) { .upload-grid { grid-template-columns:1fr; } }
+  .upload-card {
+    border:2px dashed #d0d0d0; border-radius:12px; padding:14px 10px; text-align:center; cursor:pointer;
+    background:#fafafa; transition:all .2s; min-height:130px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; position:relative;
+  }
+  .upload-card:hover { border-color:#FF8C00; background:#fff7ee; }
+  .upload-card.has-file { border-color:#22c55e; border-style:solid; background:#f0fdf4; }
+  .upload-card .uc-icon { font-size:28px; margin-bottom:4px; }
+  .upload-card .uc-title { font-size:12px; font-weight:700; color:#333; }
+  .upload-card .uc-req { color:#e11d48; }
+  .upload-card .uc-hint { font-size:10px; color:#888; margin-top:2px; }
+  .upload-card img { max-width:100%; max-height:110px; object-fit:cover; border-radius:8px; margin-top:6px; }
+  .upload-card .uc-status { font-size:10px; font-weight:700; margin-top:4px; color:#22c55e; }
+  .upload-card input[type=file] { display:none; }
+  .nav-btns { display:flex; gap:10px; margin-top:24px; }
+  .btn {
+    flex:1; padding:14px 20px; border-radius:12px; font-size:15px; font-weight:800; border:none;
+    cursor:pointer; transition:all .2s; font-family:inherit; text-transform:uppercase; letter-spacing:.5px;
+  }
+  .btn-primary { background:linear-gradient(135deg,#FF8C00,#ff6b1a); color:#fff; }
+  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(255,140,0,.4); }
+  .btn-primary:disabled { opacity:.6; cursor:not-allowed; transform:none; box-shadow:none; }
+  .btn-ghost { background:#f0f0f0; color:#555; }
+  .btn-ghost:hover { background:#e5e5e5; }
+  .error-box { background:#fef2f2; border:2px solid #fca5a5; color:#b91c1c; padding:12px 14px; border-radius:10px; font-size:13px; margin-bottom:14px; font-weight:600; display:none; }
+  .error-box.show { display:block; }
+  .success-screen { display:none; text-align:center; padding:40px 20px; }
+  .success-screen.show { display:block; }
+  .success-screen .big-check { font-size:80px; margin-bottom:16px; }
+  .success-screen h2 { color:#22c55e; font-size:26px; font-weight:800; margin-bottom:10px; }
+  .success-screen p { color:#555; font-size:14px; line-height:1.6; margin-bottom:8px; }
+  .success-screen .box { background:#f0fdf4; border:2px solid #86efac; border-radius:12px; padding:16px; margin-top:18px; text-align:left; }
+  .success-screen .box h3 { font-size:13px; color:#166534; margin-bottom:8px; }
+  .success-screen .box ul { font-size:12px; color:#333; padding-left:20px; line-height:1.7; }
+  .section-title { font-size:13px; font-weight:800; color:#FF8C00; text-transform:uppercase; letter-spacing:1px; margin:18px 0 12px; padding-bottom:8px; border-bottom:2px solid #ffe4cc; }
+  .section-title:first-child { margin-top:0; }
+  .loading-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:100; align-items:center; justify-content:center; }
+  .loading-overlay.show { display:flex; }
+  .loading-box { background:#fff; padding:30px 40px; border-radius:16px; text-align:center; max-width:300px; }
+  .loading-spin { width:48px; height:48px; border:5px solid #ffe4cc; border-top-color:#FF8C00; border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 14px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-box p { font-size:14px; color:#333; font-weight:700; }
+  .loading-box .sub { font-size:11px; color:#888; font-weight:400; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<div class="container" id="main-container">
+  <div class="header">
+    <div class="logo">🛵</div>
+    <h1>Somar Express</h1>
+    <div class="tag">Regístrate como Rider</div>
+  </div>
+
+  <div class="steps-bar">
+    <div class="step-dot active" id="dot-0"></div>
+    <div class="step-dot" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+  </div>
+  <div class="step-label" id="step-label">Paso 1 de 3 · Datos personales</div>
+
+  <div class="error-box" id="err-box"></div>
+
+  <!-- PASO 1: DATOS PERSONALES -->
+  <div class="step active" id="step-0">
+    <div class="section-title">Información personal</div>
+    <div class="field"><label>Nombre completo <span class="req">*</span></label><input type="text" id="f-nombre" placeholder="Ej: Juan Carlos Pérez"></div>
+    <div class="field"><label>Número de identidad (DNI) <span class="req">*</span></label><input type="text" id="f-dni" placeholder="Ej: 0501199812345" maxlength="15"></div>
+    <div class="field"><label>Edad <span class="req">*</span></label><input type="number" id="f-edad" placeholder="Ej: 25" min="18" max="70"></div>
+    <div class="field"><label>Celular <span class="req">*</span></label><input type="tel" id="f-celular" placeholder="Ej: 98765432" maxlength="8"><div class="hint">8 dígitos sin espacios ni guiones</div></div>
+    <div class="field"><label>Correo electrónico <span class="req">*</span></label><input type="email" id="f-correo" placeholder="tucorreo@email.com"><div class="hint">Con este correo iniciarás sesión en la app</div></div>
+    <div class="field"><label>Contraseña <span class="req">*</span></label><input type="password" id="f-pwd" placeholder="Mínimo 8 caracteres"><div class="hint">Al menos 8 caracteres</div></div>
+    <div class="field"><label>Confirmar contraseña <span class="req">*</span></label><input type="password" id="f-pwd2" placeholder="Repetir contraseña"></div>
+
+    <div class="section-title">Dirección</div>
+    <div class="field"><label>Ciudad <span class="req">*</span></label>
+      <select id="f-ciudad">
+        <option value="CHOLOMA">Choloma</option>
+        <option value="SAN PEDRO SULA">San Pedro Sula</option>
+        <option value="LA LIMA">La Lima</option>
+        <option value="VILLANUEVA">Villanueva</option>
+      </select>
+    </div>
+    <div class="field"><label>Colonia / Barrio</label><input type="text" id="f-colonia" placeholder="Ej: Col. Los Andes"></div>
+    <div class="field"><label>Dirección completa</label><textarea id="f-direccion" rows="2" placeholder="Referencias de cómo llegar a tu casa"></textarea></div>
+
+    <div class="nav-btns"><button class="btn btn-primary" onclick="next(1)">Siguiente →</button></div>
+  </div>
+
+  <!-- PASO 2: DOCUMENTOS -->
+  <div class="step" id="step-1">
+    <div class="section-title">Sube tus fotos</div>
+    <div class="upload-grid">
+      <div class="upload-card" id="uc-perfil"><div class="uc-icon">👤</div><div class="uc-title">Foto de perfil <span class="uc-req">*</span></div><div class="uc-hint">Rostro visible</div><input type="file" id="fi-perfil" accept="image/*"></div>
+      <div class="upload-card" id="uc-dni"><div class="uc-icon">🪪</div><div class="uc-title">DNI / Cédula <span class="uc-req">*</span></div><div class="uc-hint">Lado delantero</div><input type="file" id="fi-dni" accept="image/*"></div>
+      <div class="upload-card" id="uc-licencia"><div class="uc-icon">📇</div><div class="uc-title">Licencia de conducir <span class="uc-req">*</span></div><div class="uc-hint">Si no tienes, sube cédula</div><input type="file" id="fi-licencia" accept="image/*"></div>
+      <div class="upload-card" id="uc-revision"><div class="uc-icon">📋</div><div class="uc-title">Revisión de vehículo <span class="uc-req">*</span></div><div class="uc-hint">Documento de revisión</div><input type="file" id="fi-revision" accept="image/*"></div>
+      <div class="upload-card" id="uc-moto"><div class="uc-icon">🏍️</div><div class="uc-title">Foto de tu moto <span class="uc-req">*</span></div><div class="uc-hint">Vista completa</div><input type="file" id="fi-moto" accept="image/*"></div>
+      <div class="upload-card" id="uc-mochila" style="display:none"><div class="uc-icon">🎒</div><div class="uc-title">Foto de tu mochila</div><div class="uc-hint">Solo si tienes propia</div><input type="file" id="fi-mochila" accept="image/*"></div>
+    </div>
+    <div class="nav-btns">
+      <button class="btn btn-ghost" onclick="next(0)">← Atrás</button>
+      <button class="btn btn-primary" onclick="next(2)">Siguiente →</button>
+    </div>
+  </div>
+
+  <!-- PASO 3: EXTRAS -->
+  <div class="step" id="step-2">
+    <div class="section-title">Información de tu vehículo</div>
+    <div class="field"><label>¿Tienes moto propia? <span class="req">*</span></label>
+      <div class="radio-group"><label><input type="radio" name="moto_propia" value="SI" checked> Sí</label><label><input type="radio" name="moto_propia" value="NO"> No</label></div>
+    </div>
+    <div class="field"><label>¿Tienes licencia de conducir? <span class="req">*</span></label>
+      <div class="radio-group"><label><input type="radio" name="tiene_licencia" value="SI" checked> Sí</label><label><input type="radio" name="tiene_licencia" value="NO"> No</label></div>
+    </div>
+    <div class="field"><label>¿Tienes mochila de delivery propia? <span class="req">*</span></label>
+      <div class="radio-group"><label><input type="radio" name="mochila_propia" value="SI" onchange="toggleMochila()"> Sí</label><label><input type="radio" name="mochila_propia" value="NO" checked onchange="toggleMochila()"> No, necesito una</label></div>
+    </div>
+    <div class="field"><label>¿Tienes experiencia previa como delivery?</label>
+      <div class="radio-group"><label><input type="radio" name="experiencia" value="SI"> Sí</label><label><input type="radio" name="experiencia" value="NO" checked> No</label></div>
+    </div>
+
+    <div class="section-title">Disponibilidad</div>
+    <div class="field"><label>¿Cuándo puedes trabajar? <span class="req">*</span></label>
+      <div class="check-group">
+        <label><input type="checkbox" name="dispo" value="MAÑANAS"> Mañanas</label>
+        <label><input type="checkbox" name="dispo" value="TARDES"> Tardes</label>
+        <label><input type="checkbox" name="dispo" value="NOCHES"> Noches</label>
+        <label><input type="checkbox" name="dispo" value="FINES DE SEMANA"> Fines de semana</label>
+      </div>
+      <div class="hint">Marca al menos una opción</div>
+    </div>
+    <div class="field"><label>¿Puedes empezar de inmediato?</label>
+      <div class="radio-group"><label><input type="radio" name="iniciar_ya" value="SI" checked> Sí</label><label><input type="radio" name="iniciar_ya" value="NO"> No</label></div>
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn btn-ghost" onclick="next(1)">← Atrás</button>
+      <button class="btn btn-primary" id="btn-enviar" onclick="enviarSolicitud()">✓ Enviar solicitud</button>
+    </div>
+  </div>
+</div>
+
+<div class="container success-screen" id="success" style="display:none">
+  <div class="big-check">✅</div>
+  <h2>¡Solicitud enviada!</h2>
+  <p>Hemos recibido tu solicitud correctamente.</p>
+  <p>Nuestro equipo revisará tus documentos y te contactará pronto.</p>
+  <div class="box">
+    <h3>📋 ¿Qué sigue?</h3>
+    <ul>
+      <li>Revisamos tus documentos (24-48h)</li>
+      <li>Te contactamos por el celular que proporcionaste</li>
+      <li>Una vez aprobado, podrás iniciar sesión con tu correo y contraseña en la app Somar Rider</li>
+    </ul>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="loading-box">
+    <div class="loading-spin"></div>
+    <p id="loading-txt">Enviando solicitud...</p>
+    <div class="sub" id="loading-sub">Esto puede tomar unos segundos</div>
+  </div>
+</div>
+
+<script>
+const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
+const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
+
+let currentStep = 0;
+const files = {};
+
+function showError(msg) {
+  const el = document.getElementById('err-box');
+  el.textContent = msg;
+  el.classList.add('show');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function clearError() { document.getElementById('err-box').classList.remove('show'); }
+
+function next(step) {
+  clearError();
+  if(step > currentStep && !validarStep(currentStep)) return;
+  document.querySelectorAll('.step').forEach((el,i) => el.classList.toggle('active', i===step));
+  for(let i=0; i<3; i++){
+    const dot = document.getElementById('dot-'+i);
+    dot.classList.toggle('active', i===step);
+    dot.classList.toggle('done', i<step);
+  }
+  const labels = ['Paso 1 de 3 · Datos personales', 'Paso 2 de 3 · Documentos', 'Paso 3 de 3 · Extras'];
+  document.getElementById('step-label').textContent = labels[step];
+  currentStep = step;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function validarStep(s) {
+  if(s === 0) {
+    const nombre = document.getElementById('f-nombre').value.trim();
+    const dni = document.getElementById('f-dni').value.trim();
+    const edad = parseInt(document.getElementById('f-edad').value);
+    const cel = document.getElementById('f-celular').value.replace(/\D/g,'');
+    const correo = document.getElementById('f-correo').value.trim();
+    const pwd = document.getElementById('f-pwd').value;
+    const pwd2 = document.getElementById('f-pwd2').value;
+    if(!nombre) { showError('El nombre es requerido'); return false; }
+    if(!dni) { showError('El DNI es requerido'); return false; }
+    if(!edad || edad < 18 || edad > 70) { showError('Edad inválida (18-70)'); return false; }
+    if(cel.length !== 8) { showError('Celular debe tener 8 dígitos'); return false; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { showError('Correo electrónico inválido'); return false; }
+    if(pwd.length < 8) { showError('La contraseña debe tener al menos 8 caracteres'); return false; }
+    if(pwd !== pwd2) { showError('Las contraseñas no coinciden'); return false; }
+    return true;
+  }
+  if(s === 1) {
+    const req = ['perfil','dni','licencia','revision','moto'];
+    for(const k of req) {
+      if(!files[k]) { showError('Falta subir foto: '+k); return false; }
+    }
+    const mochilaSel = document.querySelector('input[name="mochila_propia"]:checked');
+    if(mochilaSel?.value === 'SI' && !files.mochila) {
+      showError('Marcaste que tienes mochila propia — sube la foto');
+      return false;
+    }
+    return true;
+  }
+  return true;
+}
+
+function toggleMochila() {
+  const tiene = document.querySelector('input[name="mochila_propia"]:checked')?.value === 'SI';
+  const card = document.getElementById('uc-mochila');
+  card.style.display = tiene ? '' : 'none';
+  if(!tiene) {
+    files.mochila = null;
+    resetCard('mochila');
+  }
+}
+
+function handleFile(input, key) {
+  const file = input.files?.[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')) { showError('Solo se permiten imágenes'); input.value=''; return; }
+  if(file.size > 5*1024*1024) { showError('Imagen muy grande (máximo 5MB)'); input.value=''; return; }
+  clearError();
+  files[key] = file;
+  const card = document.getElementById('uc-'+key);
+  const reader = new FileReader();
+  reader.onload = e => {
+    card.classList.add('has-file');
+    card.innerHTML = `
+      <img src="${e.target.result}" alt="preview">
+      <div class="uc-status">✓ Listo</div>
+      <button type="button" onclick="event.stopPropagation();resetCard('${key}')" style="position:absolute;top:4px;right:4px;background:#e11d48;color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:14px;cursor:pointer;font-weight:700;line-height:1">×</button>
+    `;
+    card.onclick = () => { const fi = document.createElement('input'); fi.type='file'; fi.accept='image/*'; fi.onchange=ev=>handleFile(ev.target,key); fi.click(); };
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetCard(key) {
+  files[key] = null;
+  const card = document.getElementById('uc-'+key);
+  const titles = {
+    perfil:   {icon:'👤', title:'Foto de perfil',          hint:'Rostro visible',            req:true},
+    dni:      {icon:'🪪', title:'DNI / Cédula',            hint:'Lado delantero',            req:true},
+    licencia: {icon:'📇', title:'Licencia de conducir',    hint:'Si no tienes, sube cédula', req:true},
+    revision: {icon:'📋', title:'Revisión de vehículo',    hint:'Documento de revisión',     req:true},
+    moto:     {icon:'🏍️', title:'Foto de tu moto',         hint:'Vista completa',            req:true},
+    mochila:  {icon:'🎒', title:'Foto de tu mochila',      hint:'Solo si tienes propia',     req:false},
+  };
+  const t = titles[key];
+  card.classList.remove('has-file');
+  card.innerHTML = `
+    <div class="uc-icon">${t.icon}</div>
+    <div class="uc-title">${t.title}${t.req?' <span class="uc-req">*</span>':''}</div>
+    <div class="uc-hint">${t.hint}</div>
+    <input type="file" id="fi-${key}" accept="image/*">
+  `;
+  document.getElementById('fi-'+key).addEventListener('change', function(){ handleFile(this, key); });
+  card.onclick = () => document.getElementById('fi-'+key).click();
+}
+
+// Wire up all upload cards on load
+document.addEventListener('DOMContentLoaded', () => {
+  ['perfil','dni','licencia','revision','moto','mochila'].forEach(key => {
+    const card = document.getElementById('uc-'+key);
+    const fi = document.getElementById('fi-'+key);
+    if(card && fi) {
+      card.onclick = () => fi.click();
+      fi.addEventListener('change', function(){ handleFile(this, key); });
+    }
+  });
+});
+
+async function subirAStorage(file, userId, key) {
+  const ext = (file.name.split('.').pop()||'jpg').toLowerCase();
+  const path = `${userId}/${key}_${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from('riders-docs').upload(path, file, {
+    contentType: file.type, upsert: true
+  });
+  if(error) throw new Error(`Error subiendo ${key}: ${error.message}`);
+  const { data } = sb.storage.from('riders-docs').getPublicUrl(path);
+  return data?.publicUrl;
+}
+
+async function enviarSolicitud() {
+  clearError();
+  if(!validarStep(2)) return;
+  const dispos = Array.from(document.querySelectorAll('input[name="dispo"]:checked')).map(c=>c.value);
+  if(!dispos.length) { showError('Selecciona al menos una disponibilidad'); return; }
+
+  const btn = document.getElementById('btn-enviar');
+  btn.disabled = true;
+  const loading = document.getElementById('loading');
+  const loadTxt = document.getElementById('loading-txt');
+  const loadSub = document.getElementById('loading-sub');
+  loading.classList.add('show');
+
+  try {
+    const nombre  = document.getElementById('f-nombre').value.trim();
+    const correo  = document.getElementById('f-correo').value.trim().toLowerCase();
+    const pwd     = document.getElementById('f-pwd').value;
+    const celular = document.getElementById('f-celular').value.replace(/\D/g,'');
+
+    // 1. Subir fotos a un folder temporal identificado por correo (no tenemos userId aún)
+    loadTxt.textContent = 'Subiendo tus fotos...';
+    loadSub.textContent = 'Paso 1 de 2';
+    const folder = correo.replace(/[^a-z0-9]/g,'_') + '_' + Date.now();
+    const uploadPromises = [];
+    const uploadKeys = [];
+    for(const [key, file] of Object.entries(files)) {
+      if(file) {
+        uploadPromises.push(subirAStorage(file, folder, key));
+        uploadKeys.push(key);
+      }
+    }
+    const uploadedUrls = await Promise.all(uploadPromises);
+    const urls = {};
+    uploadKeys.forEach((k, i) => { urls[k] = uploadedUrls[i]; });
+
+    // 2. Llamar edge function que crea auth.user + inserta aplicación (con email_confirm)
+    loadTxt.textContent = 'Registrando tu solicitud...';
+    loadSub.textContent = 'Paso 2 de 2';
+
+    const dni = document.getElementById('f-dni').value.trim();
+    const ciudad = document.getElementById('f-ciudad').value;
+    const colonia = document.getElementById('f-colonia').value.trim();
+    const direccion = document.getElementById('f-direccion').value.trim();
+    const tieneMochila = document.querySelector('input[name="mochila_propia"]:checked')?.value === 'SI';
+    const experiencia = document.querySelector('input[name="experiencia"]:checked')?.value === 'SI';
+    const iniciarYa = document.querySelector('input[name="iniciar_ya"]:checked')?.value === 'SI';
+
+    const res = await fetch(`${SUPA_URL}/functions/v1/registrar-rider`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPA_ANON,
+      },
+      body: JSON.stringify({
+        nombre, correo, password: pwd, celular,
+        identidad: dni,
+        ciudad,
+        colonia: colonia || null,
+        direccion_completa: direccion || null,
+        foto_url: urls.perfil || null,
+        identidad_delantera_url: urls.dni || null,
+        licencia_url: urls.licencia || null,
+        revision_vehiculo_url: urls.revision || null,
+        moto_propia_url: urls.moto || null,
+        mochila_url: urls.mochila || null,
+        tiene_experiencia: experiencia,
+        tiene_mochila: tieneMochila,
+        disponibilidad: dispos.join(', '),
+        puede_iniciar_ya: iniciarYa,
+      })
+    });
+    const json = await res.json();
+    if(!res.ok) throw new Error(json.error || 'Error al registrar');
+
+    // Éxito
+    loading.classList.remove('show');
+    document.getElementById('main-container').style.display = 'none';
+    document.getElementById('success').style.display = 'block';
+    window.scrollTo({top:0, behavior:'smooth'});
+
+  } catch(e) {
+    loading.classList.remove('show');
+    btn.disabled = false;
+    showError(e.message || 'Error desconocido');
+    console.error('[enviarSolicitud]', e);
+  }
+}
+</script>
+</body>
+</html>
