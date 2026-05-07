@@ -119,8 +119,8 @@
     <div class="field"><label>Edad <span class="req">*</span></label><input type="number" id="f-edad" placeholder="Ej: 25" min="18" max="70"></div>
     <div class="field"><label>Celular <span class="req">*</span></label><input type="tel" id="f-celular" placeholder="Ej: 98765432" maxlength="8"><div class="hint">8 dígitos sin espacios ni guiones</div></div>
     <div class="field"><label>Correo electrónico <span class="req">*</span></label><input type="email" id="f-correo" placeholder="tucorreo@email.com"><div class="hint">Con este correo iniciarás sesión en la app</div></div>
-    <div class="field"><label>Contraseña <span class="req">*</span></label><input type="password" id="f-pwd" placeholder="Mínimo 8 caracteres"><div class="hint">Al menos 8 caracteres</div></div>
-    <div class="field"><label>Confirmar contraseña <span class="req">*</span></label><input type="password" id="f-pwd2" placeholder="Repetir contraseña"></div>
+    <div class="field"><label>Contraseña <span class="req">*</span></label><input type="password" id="f-pwd" placeholder="Mínimo 8 caracteres" autocomplete="new-password"><div class="hint">Mínimo 8 caracteres, con letras y números</div></div>
+    <div class="field"><label>Confirmar contraseña <span class="req">*</span></label><input type="password" id="f-pwd2" placeholder="Repetir contraseña" autocomplete="new-password"></div>
 
     <div class="section-title">Dirección</div>
     <div class="field"><label>Ciudad <span class="req">*</span></label>
@@ -248,18 +248,21 @@ function next(step) {
 function validarStep(s) {
   if(s === 0) {
     const nombre = document.getElementById('f-nombre').value.trim();
-    const dni = document.getElementById('f-dni').value.trim();
+    const dni = document.getElementById('f-dni').value.replace(/\D/g,'');
     const edad = parseInt(document.getElementById('f-edad').value);
     const cel = document.getElementById('f-celular').value.replace(/\D/g,'');
     const correo = document.getElementById('f-correo').value.trim();
     const pwd = document.getElementById('f-pwd').value;
     const pwd2 = document.getElementById('f-pwd2').value;
-    if(!nombre) { showError('El nombre es requerido'); return false; }
-    if(!dni) { showError('El DNI es requerido'); return false; }
+    if(!nombre || nombre.length < 3) { showError('Ingresa tu nombre completo'); return false; }
+    if(dni.length !== 13) { showError('DNI debe tener 13 dígitos'); return false; }
+    const depto = parseInt(dni.substring(0,2));
+    if(depto < 1 || depto > 18) { showError('DNI inválido (departamento debe ser 01-18)'); return false; }
     if(!edad || edad < 18 || edad > 70) { showError('Edad inválida (18-70)'); return false; }
     if(cel.length !== 8) { showError('Celular debe tener 8 dígitos'); return false; }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { showError('Correo electrónico inválido'); return false; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) || correo.length > 100) { showError('Correo electrónico inválido'); return false; }
     if(pwd.length < 8) { showError('La contraseña debe tener al menos 8 caracteres'); return false; }
+    if(!/[A-Za-z]/.test(pwd) || !/[0-9]/.test(pwd)) { showError('La contraseña debe tener letras y números'); return false; }
     if(pwd !== pwd2) { showError('Las contraseñas no coinciden'); return false; }
     return true;
   }
@@ -344,15 +347,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-async function subirAStorage(file, userId, key) {
-  const ext = (file.name.split('.').pop()||'jpg').toLowerCase();
-  const path = `${userId}/${key}_${Date.now()}.${ext}`;
+async function subirAStorage(file, folderPath, key) {
+  const ext = (file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const safeExt = ['jpg','jpeg','png','webp'].includes(ext) ? ext : 'jpg';
+  const path = `${folderPath}/${key}_${Date.now()}.${safeExt}`;
   const { error } = await sb.storage.from('riders-docs').upload(path, file, {
     contentType: file.type, upsert: true
   });
   if(error) throw new Error(`Error subiendo ${key}: ${error.message}`);
-  const { data } = sb.storage.from('riders-docs').getPublicUrl(path);
-  return data?.publicUrl;
+  // Bucket es privado: guardamos solo el path, las apps generarán URLs firmadas cuando muestren
+  return path;
 }
 
 async function enviarSolicitud() {
@@ -374,10 +378,12 @@ async function enviarSolicitud() {
     const pwd     = document.getElementById('f-pwd').value;
     const celular = document.getElementById('f-celular').value.replace(/\D/g,'');
 
-    // 1. Subir fotos a un folder temporal identificado por correo (no tenemos userId aún)
+    // 1. Subir fotos a un folder temporal con nonce aleatorio (no predecible)
     loadTxt.textContent = 'Subiendo tus fotos...';
     loadSub.textContent = 'Paso 1 de 2';
-    const folder = correo.replace(/[^a-z0-9]/g,'_') + '_' + Date.now();
+    const correoSafe = correo.replace(/[^a-z0-9]/g,'_');
+    const nonce = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)).replace(/-/g,'').slice(0,16);
+    const folder = `${correoSafe}_${Date.now()}${nonce}`;
     const uploadPromises = [];
     const uploadKeys = [];
     for(const [key, file] of Object.entries(files)) {
@@ -386,9 +392,9 @@ async function enviarSolicitud() {
         uploadKeys.push(key);
       }
     }
-    const uploadedUrls = await Promise.all(uploadPromises);
-    const urls = {};
-    uploadKeys.forEach((k, i) => { urls[k] = uploadedUrls[i]; });
+    const uploadedPaths = await Promise.all(uploadPromises);
+    const paths = {};
+    uploadKeys.forEach((k, i) => { paths[k] = uploadedPaths[i]; });
 
     // 2. Llamar edge function que crea auth.user + inserta aplicación (con email_confirm)
     loadTxt.textContent = 'Registrando tu solicitud...';
@@ -414,12 +420,12 @@ async function enviarSolicitud() {
         ciudad,
         colonia: colonia || null,
         direccion_completa: direccion || null,
-        foto_url: urls.perfil || null,
-        identidad_delantera_url: urls.dni || null,
-        licencia_url: urls.licencia || null,
-        revision_vehiculo_url: urls.revision || null,
-        moto_propia_url: urls.moto || null,
-        mochila_url: urls.mochila || null,
+        foto_url: paths.perfil || null,
+        identidad_delantera_url: paths.dni || null,
+        licencia_url: paths.licencia || null,
+        revision_vehiculo_url: paths.revision || null,
+        moto_propia_url: paths.moto || null,
+        mochila_url: paths.mochila || null,
         tiene_experiencia: experiencia,
         tiene_mochila: tieneMochila,
         disponibilidad: dispos.join(', '),
@@ -439,7 +445,6 @@ async function enviarSolicitud() {
     loading.classList.remove('show');
     btn.disabled = false;
     showError(e.message || 'Error desconocido');
-    console.error('[enviarSolicitud]', e);
   }
 }
 </script>
