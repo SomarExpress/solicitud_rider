@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Únete a Somar Express · Riders</title>
+<!-- Build: 2026-05-07-v3 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -277,6 +281,31 @@ const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
 const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
 
+// 🔥 CAPTURA GLOBAL DE ERRORES: si algo falla, mostrar al usuario en lugar de silencioso
+window.addEventListener('error', (e) => {
+  try {
+    const box = document.getElementById('err-box');
+    const msg = document.getElementById('err-msg');
+    if (box && msg) {
+      msg.textContent = '⚠️ Error: ' + (e.message || e.error?.message || 'Error desconocido');
+      box.classList.add('show');
+      window.scrollTo({top:0, behavior:'smooth'});
+    } else {
+      alert('Error: ' + (e.message || 'Error desconocido'));
+    }
+  } catch(_) {}
+});
+window.addEventListener('unhandledrejection', (e) => {
+  try {
+    const box = document.getElementById('err-box');
+    const msg = document.getElementById('err-msg');
+    if (box && msg) {
+      msg.textContent = '⚠️ ' + (e.reason?.message || e.reason || 'Error de promesa');
+      box.classList.add('show');
+    }
+  } catch(_) {}
+});
+
 let currentStep = 0;
 const files = {};
 
@@ -324,6 +353,37 @@ function toggleDispoCelda(dia, turno) {
   } else {
     if(turno === 'TIEMPO_COMPLETO') {
       // Tiempo completo es exclusivo: vacía todo y deja solo TC
+      dispoState[dia] = ['TIEMPO_COMPLETO'];
+    } else {
+      // Si había TC, quitarlo al marcar otro turno
+      const tcIdx = arr.indexOf('TIEMPO_COMPLETO');
+      if(tcIdx >= 0) arr.splice(tcIdx, 1);
+      arr.push(turno);
+    }
+  }
+  refrescarGrillaDispo();
+}
+
+function refrescarGrillaDispo() {
+  DIAS.forEach(d => {
+    const arr = dispoState[d.key];
+    const tieneTC = arr.includes('TIEMPO_COMPLETO');
+    const row = document.getElementById('row-'+d.key);
+    if(row) row.classList.toggle('row-completo', tieneTC);
+    TURNOS.forEach(t => {
+      const cell = document.querySelector(`[data-dia="${d.key}"][data-turno="${t.key}"]`);
+      if(cell) cell.classList.toggle('on', arr.includes(t.key));
+    });
+  });
+}
+
+function dispoQuick(accion) {
+  if(accion === 'limpiar') {
+    DIAS.forEach(d => { dispoState[d.key] = []; });
+  } else if(accion === 'todos_completo') {
+    DIAS.forEach(d => { dispoState[d.key] = ['TIEMPO_COMPLETO']; });
+  } else if(accion === 'lun_vie_completo') {
+    DIAS.forEach(d => {
       dispoState[d.key] = (['lunes','martes','miercoles','jueves','viernes'].includes(d.key)) ? ['TIEMPO_COMPLETO'] : [];
     });
   } else if(accion === 'finde') {
@@ -532,7 +592,7 @@ async function enviarSolicitud() {
         uploadKeys.push(key);
       }
     }
-const uploadedPaths = await Promise.all(uploadPromises);
+    const uploadedPaths = await Promise.all(uploadPromises);
     const paths = {};
     uploadKeys.forEach((k, i) => { paths[k] = uploadedPaths[i]; });
 
@@ -590,6 +650,15 @@ const uploadedPaths = await Promise.all(uploadPromises);
     showError(e.message || 'Error desconocido');
   }
 }
+
+// 🔗 Bind explícito al window: garantiza que onclick="next(1)" funcione en todos los navegadores
+window.next = next;
+window.toggleMochila = toggleMochila;
+window.toggleExperiencia = toggleExperiencia;
+window.toggleDispoCelda = toggleDispoCelda;
+window.dispoQuick = dispoQuick;
+window.resetCard = resetCard;
+window.enviarSolicitud = enviarSolicitud;
 </script>
 </body>
 </html>
