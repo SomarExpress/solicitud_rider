@@ -324,37 +324,6 @@ function toggleDispoCelda(dia, turno) {
   } else {
     if(turno === 'TIEMPO_COMPLETO') {
       // Tiempo completo es exclusivo: vacía todo y deja solo TC
-      dispoState[dia] = ['TIEMPO_COMPLETO'];
-    } else {
-      // Si había TC, quitarlo al marcar otro turno
-      const tcIdx = arr.indexOf('TIEMPO_COMPLETO');
-      if(tcIdx >= 0) arr.splice(tcIdx, 1);
-      arr.push(turno);
-    }
-  }
-  refrescarGrillaDispo();
-}
-
-function refrescarGrillaDispo() {
-  DIAS.forEach(d => {
-    const arr = dispoState[d.key];
-    const tieneTC = arr.includes('TIEMPO_COMPLETO');
-    const row = document.getElementById('row-'+d.key);
-    if(row) row.classList.toggle('row-completo', tieneTC);
-    TURNOS.forEach(t => {
-      const cell = document.querySelector(`[data-dia="${d.key}"][data-turno="${t.key}"]`);
-      if(cell) cell.classList.toggle('on', arr.includes(t.key));
-    });
-  });
-}
-
-function dispoQuick(accion) {
-  if(accion === 'limpiar') {
-    DIAS.forEach(d => { dispoState[d.key] = []; });
-  } else if(accion === 'todos_completo') {
-    DIAS.forEach(d => { dispoState[d.key] = ['TIEMPO_COMPLETO']; });
-  } else if(accion === 'lun_vie_completo') {
-    DIAS.forEach(d => {
       dispoState[d.key] = (['lunes','martes','miercoles','jueves','viernes'].includes(d.key)) ? ['TIEMPO_COMPLETO'] : [];
     });
   } else if(accion === 'finde') {
@@ -563,7 +532,7 @@ async function enviarSolicitud() {
         uploadKeys.push(key);
       }
     }
-    const uploadedPaths = await Promise.all(uploadPromises);
+const uploadedPaths = await Promise.all(uploadPromises);
     const paths = {};
     uploadKeys.forEach((k, i) => { paths[k] = uploadedPaths[i]; });
 
@@ -603,8 +572,6 @@ async function enviarSolicitud() {
         tiene_mochila: tieneMochila,
         disponibilidad: dispoResumenTexto(),
         disponibilidad_horarios: dispoState,
-        puede_iniciar_ya: iniciarYa,
-      })
         puede_iniciar_ya: iniciarYa,
       })
     });
