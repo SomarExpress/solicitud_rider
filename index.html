@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Únete a Somar Express · Riders</title>
-<!-- Build: 2026-05-07-v3 -->
+<!-- Build: 2026-05-07-v4 (anon-only client) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -279,7 +279,23 @@
 <script>
 const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
-const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
+
+// Cliente DEDICADO sin persistencia: garantiza que las requests vayan como `anon`
+// (sin esto, si el navegador tenía sesión previa de la rider app, los uploads
+// irían como `authenticated` y la política RLS de upload de solicitudes los rechaza)
+const sb = supabase.createClient(SUPA_URL, SUPA_ANON, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    storage: { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} }
+  }
+});
+
+// Por seguridad: limpiar cualquier sesión previa que pueda haber quedado en localStorage
+try {
+  Object.keys(localStorage).filter(k => k.startsWith('sb-')).forEach(k => localStorage.removeItem(k));
+} catch(_) {}
 
 // 🔥 CAPTURA GLOBAL DE ERRORES: si algo falla, mostrar al usuario en lugar de silencioso
 window.addEventListener('error', (e) => {
@@ -662,3 +678,4 @@ window.enviarSolicitud = enviarSolicitud;
 </script>
 </body>
 </html>
+
