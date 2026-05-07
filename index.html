@@ -47,6 +47,36 @@
   }
   .radio-group label:has(input:checked), .check-group label:has(input:checked) { border-color:#FF8C00; background:#fff7ee; color:#FF8C00; }
   .radio-group input, .check-group input { accent-color:#FF8C00; }
+
+  /* Disponibilidad: botones rápidos */
+  .dispo-quick { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .btn-quick {
+    flex:1; min-width:130px; padding:8px 10px; font-size:12px; font-weight:700;
+    background:#fff7ee; border:1.5px solid #FF8C00; color:#FF8C00;
+    border-radius:8px; cursor:pointer; font-family:inherit; transition:all .15s;
+  }
+  .btn-quick:hover { background:#FF8C00; color:#fff; }
+  .btn-quick-clear { background:#fafafa; border-color:#e5e5e5; color:#888; }
+  .btn-quick-clear:hover { background:#e11d48; border-color:#e11d48; color:#fff; }
+
+  /* Disponibilidad: grilla días × turnos */
+  .dispo-grid-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border:1.5px solid #e5e5e5; border-radius:10px; background:#fafafa; }
+  .dispo-grid { width:100%; min-width:480px; border-collapse:collapse; font-size:11px; }
+  .dispo-grid th, .dispo-grid td { padding:8px 4px; text-align:center; border:1px solid #ececec; }
+  .dispo-grid thead th { background:#fff; font-weight:700; color:#555; font-size:10px; line-height:1.2; }
+  .dispo-grid thead th:first-child { background:#fafafa; }
+  .dispo-grid tbody td:first-child { background:#fff; font-weight:700; text-align:left; padding-left:12px; color:#333; font-size:12px; min-width:90px; }
+  .dispo-grid tbody td.cell { cursor:pointer; user-select:none; transition:background .12s; min-width:60px; height:42px; }
+  .dispo-grid tbody td.cell:hover { background:#fff7ee; }
+  .dispo-grid tbody td.cell.on { background:#FF8C00; color:#fff; font-weight:700; }
+  .dispo-grid tbody td.cell.on::before { content:'✓'; font-size:14px; }
+  .dispo-grid tbody td.cell.disabled { opacity:.3; cursor:not-allowed; background:#f5f5f5; }
+  .dispo-grid tbody tr.row-completo td.cell:not(.col-completo) { opacity:.3; pointer-events:none; background:#f5f5f5; }
+  @media (max-width:480px) {
+    .dispo-grid { font-size:10px; }
+    .dispo-grid tbody td:first-child { font-size:11px; min-width:70px; padding-left:8px; }
+    .btn-quick { min-width:100%; }
+  }
   .upload-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   @media (max-width:480px) { .upload-grid { grid-template-columns:1fr; } }
   .upload-card {
@@ -168,19 +198,46 @@
       <div class="radio-group"><label><input type="radio" name="mochila_propia" value="SI" onchange="toggleMochila()"> Sí</label><label><input type="radio" name="mochila_propia" value="NO" checked onchange="toggleMochila()"> No, necesito una</label></div>
     </div>
     <div class="field"><label>¿Tienes experiencia previa como delivery?</label>
-      <div class="radio-group"><label><input type="radio" name="experiencia" value="SI"> Sí</label><label><input type="radio" name="experiencia" value="NO" checked> No</label></div>
+      <div class="radio-group"><label><input type="radio" name="experiencia" value="SI" onchange="toggleExperiencia()"> Sí</label><label><input type="radio" name="experiencia" value="NO" checked onchange="toggleExperiencia()"> No</label></div>
+    </div>
+    <div class="field" id="exp-detalle-wrap" style="display:none">
+      <label>Cuéntanos dónde has trabajado</label>
+      <textarea id="f-experiencia-detalle" rows="3" maxlength="500" placeholder="Ej: PedidosYa - 2 años, Hugo App - 6 meses"></textarea>
+      <div class="hint">Empresa(s) y tiempo aproximado</div>
     </div>
 
     <div class="section-title">Disponibilidad</div>
-    <div class="field"><label>¿Cuándo puedes trabajar? <span class="req">*</span></label>
-      <div class="check-group">
-        <label><input type="checkbox" name="dispo" value="MAÑANAS"> Mañanas</label>
-        <label><input type="checkbox" name="dispo" value="TARDES"> Tardes</label>
-        <label><input type="checkbox" name="dispo" value="NOCHES"> Noches</label>
-        <label><input type="checkbox" name="dispo" value="FINES DE SEMANA"> Fines de semana</label>
+    <div class="field">
+      <label>¿En qué días y turnos puedes trabajar? <span class="req">*</span></label>
+      <div class="hint" style="margin-bottom:10px">Marca los turnos disponibles para cada día</div>
+
+      <div class="dispo-quick">
+        <button type="button" class="btn-quick" onclick="dispoQuick('todos_completo')">⚡ Tiempo completo todos los días</button>
+        <button type="button" class="btn-quick" onclick="dispoQuick('lun_vie_completo')">📅 Lun–Vie tiempo completo</button>
+        <button type="button" class="btn-quick" onclick="dispoQuick('finde')">🎉 Solo fines de semana</button>
+        <button type="button" class="btn-quick btn-quick-clear" onclick="dispoQuick('limpiar')">✕ Limpiar</button>
       </div>
-      <div class="hint">Marca al menos una opción</div>
+
+      <div class="dispo-grid-wrap">
+        <table class="dispo-grid">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Tiempo<br>completo</th>
+              <th>8AM–<br>8PM</th>
+              <th>8PM–<br>5AM</th>
+              <th>8AM–<br>1PM</th>
+              <th>11AM–<br>6PM</th>
+            </tr>
+          </thead>
+          <tbody id="dispo-grid-body">
+            <!-- Generado por JS -->
+          </tbody>
+        </table>
+      </div>
+      <div class="hint" style="margin-top:8px">💡 Marcar "Tiempo completo" desactiva los demás turnos del día</div>
     </div>
+
     <div class="field"><label>¿Puedes empezar de inmediato?</label>
       <div class="radio-group"><label><input type="radio" name="iniciar_ya" value="SI" checked> Sí</label><label><input type="radio" name="iniciar_ya" value="NO"> No</label></div>
     </div>
@@ -222,6 +279,115 @@ const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
 
 let currentStep = 0;
 const files = {};
+
+// ─── Disponibilidad: grilla día × turno ───
+const DIAS = [
+  {key:'lunes', label:'Lunes'},
+  {key:'martes', label:'Martes'},
+  {key:'miercoles', label:'Miércoles'},
+  {key:'jueves', label:'Jueves'},
+  {key:'viernes', label:'Viernes'},
+  {key:'sabado', label:'Sábado'},
+  {key:'domingo', label:'Domingo'},
+];
+const TURNOS = [
+  {key:'TIEMPO_COMPLETO', label:'Tiempo completo'},
+  {key:'T_8AM_8PM', label:'8AM-8PM'},
+  {key:'T_8PM_5AM', label:'8PM-5AM'},
+  {key:'T_8AM_1PM', label:'8AM-1PM'},
+  {key:'T_11AM_6PM', label:'11AM-6PM'},
+];
+// estado: { lunes: ['TIEMPO_COMPLETO'], martes: ['T_8AM_8PM','T_11AM_6PM'], ... }
+const dispoState = {};
+DIAS.forEach(d => { dispoState[d.key] = []; });
+
+function construirGrillaDispo() {
+  const tbody = document.getElementById('dispo-grid-body');
+  if(!tbody) return;
+  tbody.innerHTML = DIAS.map(d => `
+    <tr id="row-${d.key}">
+      <td>${d.label}</td>
+      ${TURNOS.map(t => `
+        <td class="cell ${t.key==='TIEMPO_COMPLETO'?'col-completo':''}"
+            data-dia="${d.key}" data-turno="${t.key}"
+            onclick="toggleDispoCelda('${d.key}','${t.key}')"></td>
+      `).join('')}
+    </tr>
+  `).join('');
+}
+
+function toggleDispoCelda(dia, turno) {
+  const arr = dispoState[dia];
+  const idx = arr.indexOf(turno);
+  if(idx >= 0) {
+    arr.splice(idx, 1);
+  } else {
+    if(turno === 'TIEMPO_COMPLETO') {
+      // Tiempo completo es exclusivo: vacía todo y deja solo TC
+      dispoState[dia] = ['TIEMPO_COMPLETO'];
+    } else {
+      // Si había TC, quitarlo al marcar otro turno
+      const tcIdx = arr.indexOf('TIEMPO_COMPLETO');
+      if(tcIdx >= 0) arr.splice(tcIdx, 1);
+      arr.push(turno);
+    }
+  }
+  refrescarGrillaDispo();
+}
+
+function refrescarGrillaDispo() {
+  DIAS.forEach(d => {
+    const arr = dispoState[d.key];
+    const tieneTC = arr.includes('TIEMPO_COMPLETO');
+    const row = document.getElementById('row-'+d.key);
+    if(row) row.classList.toggle('row-completo', tieneTC);
+    TURNOS.forEach(t => {
+      const cell = document.querySelector(`[data-dia="${d.key}"][data-turno="${t.key}"]`);
+      if(cell) cell.classList.toggle('on', arr.includes(t.key));
+    });
+  });
+}
+
+function dispoQuick(accion) {
+  if(accion === 'limpiar') {
+    DIAS.forEach(d => { dispoState[d.key] = []; });
+  } else if(accion === 'todos_completo') {
+    DIAS.forEach(d => { dispoState[d.key] = ['TIEMPO_COMPLETO']; });
+  } else if(accion === 'lun_vie_completo') {
+    DIAS.forEach(d => {
+      dispoState[d.key] = (['lunes','martes','miercoles','jueves','viernes'].includes(d.key)) ? ['TIEMPO_COMPLETO'] : [];
+    });
+  } else if(accion === 'finde') {
+    DIAS.forEach(d => {
+      dispoState[d.key] = (['sabado','domingo'].includes(d.key)) ? ['TIEMPO_COMPLETO'] : [];
+    });
+  }
+  refrescarGrillaDispo();
+}
+
+function tieneAlgunaDispo() {
+  return DIAS.some(d => dispoState[d.key].length > 0);
+}
+
+function dispoResumenTexto() {
+  // Texto legible: "Lun: Tiempo completo · Mar: 8AM-8PM, 11AM-6PM"
+  const partes = [];
+  DIAS.forEach(d => {
+    const arr = dispoState[d.key];
+    if(!arr.length) return;
+    const labelDia = d.label.substring(0,3);
+    const labelTurnos = arr.map(tk => TURNOS.find(t => t.key===tk)?.label || tk).join(', ');
+    partes.push(`${labelDia}: ${labelTurnos}`);
+  });
+  return partes.join(' · ');
+}
+
+function toggleExperiencia() {
+  const tieneExp = document.querySelector('input[name="experiencia"]:checked')?.value === 'SI';
+  const wrap = document.getElementById('exp-detalle-wrap');
+  if(wrap) wrap.style.display = tieneExp ? '' : 'none';
+  if(!tieneExp) document.getElementById('f-experiencia-detalle').value = '';
+}
 
 function showError(msg) {
   const el = document.getElementById('err-box');
@@ -346,6 +512,8 @@ document.addEventListener('DOMContentLoaded', () => {
       fi.addEventListener('change', function(){ handleFile(this, key); });
     }
   });
+  // Construir grilla de disponibilidad
+  construirGrillaDispo();
 });
 
 async function subirAStorage(file, folderPath, key) {
@@ -363,8 +531,10 @@ async function subirAStorage(file, folderPath, key) {
 async function enviarSolicitud() {
   clearError();
   if(!validarStep(2)) return;
-  const dispos = Array.from(document.querySelectorAll('input[name="dispo"]:checked')).map(c=>c.value);
-  if(!dispos.length) { showError('Selecciona al menos una disponibilidad'); return; }
+  if(!tieneAlgunaDispo()) { showError('Marca al menos un día y turno disponible'); return; }
+  const expSi = document.querySelector('input[name="experiencia"]:checked')?.value === 'SI';
+  const expDetalle = document.getElementById('f-experiencia-detalle').value.trim();
+  if(expSi && !expDetalle) { showError('Cuéntanos brevemente dónde has trabajado'); return; }
 
   const btn = document.getElementById('btn-enviar');
   btn.disabled = true;
@@ -401,12 +571,13 @@ async function enviarSolicitud() {
     loadTxt.textContent = 'Registrando tu solicitud...';
     loadSub.textContent = 'Paso 2 de 2';
 
-    const dni = document.getElementById('f-dni').value.trim();
+    const dni = document.getElementById('f-dni').value.replace(/\D/g,'');
     const ciudad = document.getElementById('f-ciudad').value;
     const colonia = document.getElementById('f-colonia').value.trim();
     const direccion = document.getElementById('f-direccion').value.trim();
     const tieneMochila = document.querySelector('input[name="mochila_propia"]:checked')?.value === 'SI';
     const experiencia = document.querySelector('input[name="experiencia"]:checked')?.value === 'SI';
+    const experienciaDetalle = experiencia ? document.getElementById('f-experiencia-detalle').value.trim().slice(0,500) : null;
     const iniciarYa = document.querySelector('input[name="iniciar_ya"]:checked')?.value === 'SI';
 
     const res = await fetch(`${SUPA_URL}/functions/v1/registrar-rider`, {
@@ -428,8 +599,12 @@ async function enviarSolicitud() {
         moto_propia_url: paths.moto || null,
         mochila_url: paths.mochila || null,
         tiene_experiencia: experiencia,
+        experiencia_detalle: experienciaDetalle,
         tiene_mochila: tieneMochila,
-        disponibilidad: dispos.join(', '),
+        disponibilidad: dispoResumenTexto(),
+        disponibilidad_horarios: dispoState,
+        puede_iniciar_ya: iniciarYa,
+      })
         puede_iniciar_ya: iniciarYa,
       })
     });
