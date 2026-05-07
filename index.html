@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Únete a Somar Express · Riders</title>
-<!-- Build: 2026-05-07-v4 (anon-only client) -->
+<!-- Build: 2026-05-07-v5 (server-side upload via edge function) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -62,8 +62,7 @@
   .btn-quick:hover { background:#FF8C00; color:#fff; }
   .btn-quick-clear { background:#fafafa; border-color:#e5e5e5; color:#888; }
   .btn-quick-clear:hover { background:#e11d48; border-color:#e11d48; color:#fff; }
-
-  /* Disponibilidad: grilla días × turnos */
+/* Disponibilidad: grilla días × turnos */
   .dispo-grid-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border:1.5px solid #e5e5e5; border-radius:10px; background:#fafafa; }
   .dispo-grid { width:100%; min-width:480px; border-collapse:collapse; font-size:11px; }
   .dispo-grid th, .dispo-grid td { padding:8px 4px; text-align:center; border:1px solid #ececec; }
@@ -594,26 +593,23 @@ async function enviarSolicitud() {
     const pwd     = document.getElementById('f-pwd').value;
     const celular = document.getElementById('f-celular').value.replace(/\D/g,'');
 
-    // 1. Subir fotos a un folder temporal con nonce aleatorio (no predecible)
-    loadTxt.textContent = 'Subiendo tus fotos...';
+    // 1. Convertir todas las fotos a base64 (las suben en el backend con service_role)
+    loadTxt.textContent = 'Preparando tus fotos...';
     loadSub.textContent = 'Paso 1 de 2';
-    const correoSafe = correo.replace(/[^a-z0-9]/g,'_');
-    const nonce = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)).replace(/-/g,'').slice(0,16);
-    const folder = `${correoSafe}_${Date.now()}${nonce}`;
-    const uploadPromises = [];
-    const uploadKeys = [];
-    for(const [key, file] of Object.entries(files)) {
-      if(file) {
-        uploadPromises.push(subirAStorage(file, folder, key));
-        uploadKeys.push(key);
-      }
+    const fotos = {};
+    for (const [key, file] of Object.entries(files)) {
+      if (!file) continue;
+      const b64 = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(new Error(`No se pudo leer la foto: ${key}`));
+        r.readAsDataURL(file);
+      });
+      fotos[key] = { b64, mime: file.type || 'image/jpeg' };
     }
-    const uploadedPaths = await Promise.all(uploadPromises);
-    const paths = {};
-    uploadKeys.forEach((k, i) => { paths[k] = uploadedPaths[i]; });
 
-    // 2. Llamar edge function que crea auth.user + inserta aplicación (con email_confirm)
-    loadTxt.textContent = 'Registrando tu solicitud...';
+    // 2. Llamar edge function que sube fotos + crea auth.user + inserta aplicación
+    loadTxt.textContent = 'Enviando tu solicitud...';
     loadSub.textContent = 'Paso 2 de 2';
 
     const dni = document.getElementById('f-dni').value.replace(/\D/g,'');
@@ -637,12 +633,7 @@ async function enviarSolicitud() {
         ciudad,
         colonia: colonia || null,
         direccion_completa: direccion || null,
-        foto_url: paths.perfil || null,
-        identidad_delantera_url: paths.dni || null,
-        licencia_url: paths.licencia || null,
-        revision_vehiculo_url: paths.revision || null,
-        moto_propia_url: paths.moto || null,
-        mochila_url: paths.mochila || null,
+        fotos,
         tiene_experiencia: experiencia,
         experiencia_detalle: experienciaDetalle,
         tiene_mochila: tieneMochila,
@@ -678,4 +669,3 @@ window.enviarSolicitud = enviarSolicitud;
 </script>
 </body>
 </html>
-
